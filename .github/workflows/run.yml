@@ -1,4 +1,4 @@
-name: Convert IPA to DEB
+name: Run
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
         required: true
 
 jobs:
-  convert:
+  run:
     runs-on: ubuntu-latest
 
     steps:
