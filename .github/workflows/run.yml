@@ -1,30 +1,54 @@
-name: Run
+name: Convert IPA to DEB
 
 on:
   workflow_dispatch:
     inputs:
-      deb:
-        description: "Direct URL to deb file"
+      ipa:
+        description: "Direct URL to IPA file"
         required: true
 
 jobs:
-  run:
+  convert:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Convert deb to IPA
+      - name: Set up workspace
         run: |
-          curl -L -o ${{ github.workspace }}/app.deb "${{ github.event.inputs.deb }}"
-          dpkg-deb -X ${{ github.workspace }}/app.deb ${{ github.workspace }}/app
+          mkdir -p ${{ github.workspace }}/deb-package/DEBIAN
+          mkdir -p ${{ github.workspace }}/deb-package/Applications
 
-          mkdir -p ${{ github.workspace }}/ipa/Payload
-          cp -R ${{ github.workspace }}/app/Applications/* ${{ github.workspace }}/ipa/Payload
-          
-          cd ${{ github.workspace }}/ipa
-          zip -r ${{ github.workspace }}/App.ipa .
+      - name: Download IPA
+        run: |
+          curl -L -o ${{ github.workspace }}/deb-package/Applications/App.ipa "${{ github.event.inputs.ipa }}"
 
-      - name: Upload IPA
+      - name: Create DEBIAN control file
+        run: |
+          cat <<EOF > ${{ github.workspace }}/deb-package/DEBIAN/control
+          Package: your-app-name
+          Version: 1.0.0
+          Section: base
+          Priority: optional
+          Architecture: all
+          Maintainer: Your Name <youremail@example.com>
+          Description: Description of your app.
+          EOF
+
+      - name: (Optional) Add post-install scripts
+        run: |
+          cat <<EOF > ${{ github.workspace }}/deb-package/DEBIAN/postinst
+          #!/bin/bash
+          echo "Post-installation script running"
+          # Example: Change permissions of the IPA
+          chmod 755 /Applications/App.ipa
+          EOF
+          chmod 755 ${{ github.workspace }}/deb-package/DEBIAN/postinst
+
+      - name: Build DEB Package
+        run: |
+          dpkg-deb --build ${{ github.workspace }}/deb-package ${{ github.workspace }}/App.deb
+
+      - name: Upload DEB
         uses: actions/upload-artifact@v4
         with:
-          name: App
-          path: ${{ github.workspace }}/App.ipa
+          name: App.deb
+          path: ${{ github.workspace }}/App.deb
